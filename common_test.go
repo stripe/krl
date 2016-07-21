@@ -1,0 +1,159 @@
+package krl
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"io"
+
+	"golang.org/x/crypto/ssh"
+)
+
+func MustParsePrivateKey(key string) ssh.Signer {
+	k, err := ssh.ParsePrivateKey([]byte(key))
+	if err != nil {
+		panic(err)
+	}
+	return k
+}
+
+func MustParseCert(cert string) *ssh.Certificate {
+	pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(cert))
+	if err != nil {
+		panic(err)
+	}
+	return pk.(*ssh.Certificate)
+}
+
+func MustDecode64(buf string) []byte {
+	out, err := base64.StdEncoding.DecodeString(buf)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+func MustUnhex(buf string) []byte {
+	out, err := hex.DecodeString(buf)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+var key1 = MustParsePrivateKey(`-----BEGIN RSA PRIVATE KEY-----
+MIICWwIBAAKBgQCnZgqTH1O7IUDhSSGIZMSQ9A4r7SKm61lxLG48QD4Yrjp5VYVV
+RIKKNvqCZv/58Xw3ZmwOVJSEbg+ZCtD8IIYgV7AOaKUkM3rYsDGqf6yrFaA+CFoW
+BYI5Jrrk3892PwhwCvQlnqkKYppuyFOLs/gqIHXAAuh0x+hrndoZhqAgTQIDAQAB
+AoGACTVGvaMKgw+oNvxD2PHaEjMqmGX58v6dM+mCwtOx1r+2vbfjlrYnDB1MGGI8
+EG6lK5L5vKwQY1x+hSegKU5MsmHuHKnj5sqzXfEznVoP9DZpzt1+dYgesCJPTvfa
+6vl329sHRmpYB92bLdnGgw6ApJYDqIx8sL4l2Uu2v+FOAY0CQQDcvYSzIorXCzqD
+ChfnohV7KYpXEB2YTqViV55YuOilbE1Yvi0fJ5XM/I9i63NEv6ks4/DZWPTnAdrP
+Q/0nkBYPAkEAwiNIBbbQ2Z6nS+84blXWjcBARprsPgiYvPiYUowFFi15n5ilgvQg
+LSd2XzPpxzn9Gwj/y6pBQcppx/qfUINf4wJAZffeDuoL/N6g/ttww32qMqSz1RgK
+s8rQtycGbLGuNoxbBn2DVnrwxip9ChL9wmpO+f+pyJ1BNF00+L3NebMjnQJAaTm6
+Ve6LMQk/YHcfPR6lllt3+00Jc24xa2vLFCL0ttqbK5gPTfWIYzEaheubcPLLb5Xn
+H7r+d+yAfXYoV/l9RQJAW3xUTRcVud5xGOVGkRcybfLv/0+/vKe6cm4Ds6jaBusc
+NJRLFuEoKuxnTTmIQwwbHQfv1Y0PFlKQFzu3IB7Cmw==
+-----END RSA PRIVATE KEY-----`)
+var key2 = MustParsePrivateKey(`-----BEGIN RSA PRIVATE KEY-----
+MIICXAIBAAKBgQDW/EGsQXXM7K9egcrJs3ktgUcKmpiMQSmGn0HkSoTplvrGbC/L
+1T5cwZEtsKlN0O/aKk4ZD3VOrCN9pOskFqCcpjOzXVIF875yrhPgckSKYN5c9ZsM
+rYNfx0/G3CUymp/iUm9L+zSoWW5XzIyT8lMbbEWqHaBlYg0a90c29SrcjQIDAQAB
+AoGAA0siBm2KTHVjymLapHRnatcMK5FqvNtSs4lFDSZHGv0BIoENymWd6vXcL4MB
+VPvacNEtGR0vguEIOiiIoajnFPgT7G2s7kP4U3vKWOpb+I2owJDl4G9fC8U/2tu6
+R4ngd7U/feqkvLcR4yJ/u1lcqFBuP+b1Np4Slwi7uaiyBFECQQD36CDt019aSF0t
+HskedUYB5JFS3wewc/PChR3OTQBaYb+aqtk2VMlPb27rKyEj5ex28OFT8uPSLEpJ
+HwQ71He3AkEA3gD9HpMQcQYINw5ovafEdx73Ek2HOFkTNdfkUN6AvrYVBXw/OoIz
+vdurljIPmF56J6xpoJi0vXd7Lfahyb0l2wJBAOZa4yY6j9LThQklHxrXPAsMOWE4
+7usug2XPzcdh058oTyNH9/g9RqYyVG3fMLcrsdM/txELlFg6YXiagpOZtPcCQDUD
+g25jrA9xY1DSbgysHWxcxp9mSB4al03KSklNeO0Ryh9PNkIgiX6TEHyDY9n85arH
+r0mcbby45X9qX+Qu+PUCQFu/ZhuxMCdrzIYJXEppq0RevS4nnIgjQS89PfIHMH8O
+vpKBNw8zNFLF3NQ94lSLVpGTFm6LTUVqGbpRlAPS0zo=
+-----END RSA PRIVATE KEY-----`)
+var cakey = MustParsePrivateKey(`-----BEGIN RSA PRIVATE KEY-----
+MIICXAIBAAKBgQCqKFB4csWJjMlUGdUT9CpLcF+gohLFyGhNUgN12IxcsNKc7bVy
+y6mwdHXpbjY1Eeew+1he6aPMWNtBGrw81ufCbX0EKizoQr169AUieYaAufGlT9tZ
+ioChcBU5lcjj5j1BGvXUNv3yuWdcLkuzzCNaA+fxlVOGqlIRupGez7QTdwIDAQAB
+AoGASQxrl3n2Mdnd6Jv6bMmKir5gX06U7pHdrSwDTkk74OMMV9B48CJc4+LrZ94n
+qVrZc5JD2uNErYqL/gQjQZ8k+RDA9zpGKzh3g/3b1xibXEsFIalNE67gWeAekiW/
+W7okuehoit7OMxkfVa9czdGGFGSsV3K/+OuSQrtNlUyfYiECQQDY0aRJqHpKEZhI
+597bgMuGVn7LNAw3V8f2eV5F7BZMNQhWm838vJFGgEpkmJHfg/4VK2CeMjlhT00a
+98w7NuTRAkEAyOgL9sdnGInZ3cUYaUV0y6VxvqJ4e1TPGRCDKsw4b/tIUzX0EmkI
+8Kfg9ym1eHKTHG8h/kcvGVJFslCK/xYlxwJAbs9F3XdDeJNhdvE6DojWe4O9LXEe
+RTKRub/xlF7CTpRT/J+IOQDOZm+ulZb8BnXY50zSBke416jFyWCXejPl4QJBAIiu
+JYWMfz0Ye5n+vu7Pi/gH5GxXSDRPrF1W+IWjTjoQ8FF8AUKNJsHi1JASVh1NhXvw
+t2WwtAA8EqKPXSDRxn0CQEvGZrFVx6PCzbVIloEi9ii17fZvHDuVZjm2g1mjWtqf
+NwWkyBxpMr7DG9++zWGn0A5G8mzaphgY7/rv4bMF6jE=
+-----END RSA PRIVATE KEY-----`)
+
+// ssh-keygen -s cakey -I test1-cert1 -n alice -z 4469 test1.pub
+var key1cert1 = MustParseCert(`ssh-rsa-cert-v01@openssh.com AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAg7fBv63dx3sIgSt/O3iGsCy1W9cZmKGknyqwltPgZCs8AAAADAQABAAAAgQCnZgqTH1O7IUDhSSGIZMSQ9A4r7SKm61lxLG48QD4Yrjp5VYVVRIKKNvqCZv/58Xw3ZmwOVJSEbg+ZCtD8IIYgV7AOaKUkM3rYsDGqf6yrFaA+CFoWBYI5Jrrk3892PwhwCvQlnqkKYppuyFOLs/gqIHXAAuh0x+hrndoZhqAgTQAAAAAAABF1AAAAAQAAAAt0ZXN0MS1jZXJ0MQAAAAkAAAAFYWxpY2UAAAAAAAAAAP//////////AAAAAAAAAIIAAAAVcGVybWl0LVgxMS1mb3J3YXJkaW5nAAAAAAAAABdwZXJtaXQtYWdlbnQtZm9yd2FyZGluZwAAAAAAAAAWcGVybWl0LXBvcnQtZm9yd2FyZGluZwAAAAAAAAAKcGVybWl0LXB0eQAAAAAAAAAOcGVybWl0LXVzZXItcmMAAAAAAAAAAAAAAJcAAAAHc3NoLXJzYQAAAAMBAAEAAACBAKooUHhyxYmMyVQZ1RP0KktwX6CiEsXIaE1SA3XYjFyw0pzttXLLqbB0deluNjUR57D7WF7po8xY20EavDzW58JtfQQqLOhCvXr0BSJ5hoC58aVP21mKgKFwFTmVyOPmPUEa9dQ2/fK5Z1wuS7PMI1oD5/GVU4aqUhG6kZ7PtBN3AAAAjwAAAAdzc2gtcnNhAAAAgGBfgTCxYYPmVcfaRRBB52FJQaGIcRw2p5hvnLasukQJ+8pucoLx9kZ19BvyqBamGqvBdpCsV7OjjDd9jvgBb/XRCaLGJfOFCS3mQN/7A9Z8DtaL2tpO4zkPOeAWurT75IPOXMF+octBxgSxUCN+iUM1sA7qo5YkBjDN1kTd59CI`)
+
+// ssh-keygen -s cakey -I test1-cert2 -n bob -z 9298 test1.pub
+var key1cert2 = MustParseCert(`ssh-rsa-cert-v01@openssh.com AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAg/V8iZkeJ9WcFZaTCqr8Y3MPFnb3gqGPTL2fy5li/J4AAAAADAQABAAAAgQCnZgqTH1O7IUDhSSGIZMSQ9A4r7SKm61lxLG48QD4Yrjp5VYVVRIKKNvqCZv/58Xw3ZmwOVJSEbg+ZCtD8IIYgV7AOaKUkM3rYsDGqf6yrFaA+CFoWBYI5Jrrk3892PwhwCvQlnqkKYppuyFOLs/gqIHXAAuh0x+hrndoZhqAgTQAAAAAAACRSAAAAAQAAAAt0ZXN0MS1jZXJ0MgAAAAcAAAADYm9iAAAAAAAAAAD//////////wAAAAAAAACCAAAAFXBlcm1pdC1YMTEtZm9yd2FyZGluZwAAAAAAAAAXcGVybWl0LWFnZW50LWZvcndhcmRpbmcAAAAAAAAAFnBlcm1pdC1wb3J0LWZvcndhcmRpbmcAAAAAAAAACnBlcm1pdC1wdHkAAAAAAAAADnBlcm1pdC11c2VyLXJjAAAAAAAAAAAAAACXAAAAB3NzaC1yc2EAAAADAQABAAAAgQCqKFB4csWJjMlUGdUT9CpLcF+gohLFyGhNUgN12IxcsNKc7bVyy6mwdHXpbjY1Eeew+1he6aPMWNtBGrw81ufCbX0EKizoQr169AUieYaAufGlT9tZioChcBU5lcjj5j1BGvXUNv3yuWdcLkuzzCNaA+fxlVOGqlIRupGez7QTdwAAAI8AAAAHc3NoLXJzYQAAAIAXEx47QOAYaAkmfolXlGo0cZYJKGWC3u2+LzsEJZ2rCXHlDjf2BNszOOB2R7O9blWHfA9OLaVDZVvFoqDGxb6vMWZ1/nnEQrZEMnZja/rj4Gglmf8nqpLlhHgyPDB0DPHtNx9k8s5kDvUqAqOC52vaNHm8rD/nx2690hFGajHKBw==`)
+
+// ssh-keygen -s cakey -I test2-cert1 -n carl -z 12941 test2.pub
+var key2cert1 = MustParseCert(`ssh-rsa-cert-v01@openssh.com AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgWAHxbnu3yQMnuHLf2Bci5xK22SVo2k+KoL/zTDSMY/4AAAADAQABAAAAgQDW/EGsQXXM7K9egcrJs3ktgUcKmpiMQSmGn0HkSoTplvrGbC/L1T5cwZEtsKlN0O/aKk4ZD3VOrCN9pOskFqCcpjOzXVIF875yrhPgckSKYN5c9ZsMrYNfx0/G3CUymp/iUm9L+zSoWW5XzIyT8lMbbEWqHaBlYg0a90c29SrcjQAAAAAAADKNAAAAAQAAAAt0ZXN0Mi1jZXJ0MQAAAAgAAAAEY2FybAAAAAAAAAAA//////////8AAAAAAAAAggAAABVwZXJtaXQtWDExLWZvcndhcmRpbmcAAAAAAAAAF3Blcm1pdC1hZ2VudC1mb3J3YXJkaW5nAAAAAAAAABZwZXJtaXQtcG9ydC1mb3J3YXJkaW5nAAAAAAAAAApwZXJtaXQtcHR5AAAAAAAAAA5wZXJtaXQtdXNlci1yYwAAAAAAAAAAAAAAlwAAAAdzc2gtcnNhAAAAAwEAAQAAAIEAqihQeHLFiYzJVBnVE/QqS3BfoKISxchoTVIDddiMXLDSnO21csupsHR16W42NRHnsPtYXumjzFjbQRq8PNbnwm19BCos6EK9evQFInmGgLnxpU/bWYqAoXAVOZXI4+Y9QRr11Db98rlnXC5Ls8wjWgPn8ZVThqpSEbqRns+0E3cAAACPAAAAB3NzaC1yc2EAAACAa9JAnKIbq9Uu/G71WGhDPI2v+Zs2tHx7uy7dCj547aQgr5SGQhqQ+AHGPgketK2uFxL6yaLRoLCbFr0Ao741fVUUmPEZPTp7oRO/KwQ1aIcFBjO02l/c/V3JQ8JMW0kr5PiOWBEWbuz+uvzFhF/dvuyB1bSRYRMiTwDCkfXc7mA=`)
+
+// ssh-keygen -s cakey -I test2-cert2 -n devi -z 25982 test2.pub
+var key2cert2 = MustParseCert(`ssh-rsa-cert-v01@openssh.com AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAg1lXlhznNAtcopmmU4slWPi2XyTFfJjlNT65+UwrhaFsAAAADAQABAAAAgQDW/EGsQXXM7K9egcrJs3ktgUcKmpiMQSmGn0HkSoTplvrGbC/L1T5cwZEtsKlN0O/aKk4ZD3VOrCN9pOskFqCcpjOzXVIF875yrhPgckSKYN5c9ZsMrYNfx0/G3CUymp/iUm9L+zSoWW5XzIyT8lMbbEWqHaBlYg0a90c29SrcjQAAAAAAAGV+AAAAAQAAAAt0ZXN0Mi1jZXJ0MgAAAAgAAAAEZGV2aQAAAAAAAAAA//////////8AAAAAAAAAggAAABVwZXJtaXQtWDExLWZvcndhcmRpbmcAAAAAAAAAF3Blcm1pdC1hZ2VudC1mb3J3YXJkaW5nAAAAAAAAABZwZXJtaXQtcG9ydC1mb3J3YXJkaW5nAAAAAAAAAApwZXJtaXQtcHR5AAAAAAAAAA5wZXJtaXQtdXNlci1yYwAAAAAAAAAAAAAAlwAAAAdzc2gtcnNhAAAAAwEAAQAAAIEAqihQeHLFiYzJVBnVE/QqS3BfoKISxchoTVIDddiMXLDSnO21csupsHR16W42NRHnsPtYXumjzFjbQRq8PNbnwm19BCos6EK9evQFInmGgLnxpU/bWYqAoXAVOZXI4+Y9QRr11Db98rlnXC5Ls8wjWgPn8ZVThqpSEbqRns+0E3cAAACPAAAAB3NzaC1yc2EAAACAOHNXf3OqCsLUzyIFFjCkLI4qO5wHo9m1l7q1RfCZaxyIBc26oXiNYVIuGxvAyiu9X0FAxTSrkt3kvOLvrwirnZu7ab83rUtynHUs0vwa41otKtIPu52OO02UTZmcMDUxrUwVQDbErfvQH/9xIXzqo8lq91Lopt4Reb5CSesH1oo=`)
+
+/*
+serial: 42
+serial: 4469
+serial: 8000-10000
+serial: 25970
+serial: 25972
+serial: 25974
+serial: 25976
+serial: 25978
+serial: 25980
+serial: 25982
+serial: 25984
+serial: 25986
+serial: 25988
+serial: 25990
+
+This gets coalesced by ssh-keygen into a list of size two, a range, and a bitmap
+*/
+var krlbuf1 = MustDecode64(`U1NIS1JMCgAAAAABAAAAAAAABNIAAAAAVoLDtwAAAAAAAAAAAAAAAAAAAAABAAAA3QAAAJcAAAAHc3NoLXJzYQAAAAMBAAEAAACBAKooUHhyxYmMyVQZ1RP0KktwX6CiEsXIaE1SA3XYjFyw0pzttXLLqbB0deluNjUR57D7WF7po8xY20EavDzW58JtfQQqLOhCvXr0BSJ5hoC58aVP21mKgKFwFTmVyOPmPUEa9dQ2/fK5Z1wuS7PMI1oD5/GVU4aqUhG6kZ7PtBN3AAAAACAAAAAQAAAAAAAAACoAAAAAAAARdSEAAAAQAAAAAAAAH0AAAAAAAAAnECIAAAAPAAAAAAAAZXIAAAADFVVV`)
+
+/*
+id: test2-cert1
+id: not-a-cert
+key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQCnZgqTH1O7IUDhSSGIZMSQ9A4r7SKm61lxLG48QD4Yrjp5VYVVRIKKNvqCZv/58Xw3ZmwOVJSEbg+ZCtD8IIYgV7AOaKUkM3rYsDGqf6yrFaA+CFoWBYI5Jrrk3892PwhwCvQlnqkKYppuyFOLs/gqIHXAAuh0x+hrndoZhqAgTQ==
+
+That's the pubkey corresponding to key1.
+*/
+var krlbuf2 = MustDecode64(`U1NIS1JMCgAAAAABAAAAAAAABNIAAAAAVoLGWwAAAAAAAAAAAAAAAAAAAAABAAAAwQAAAJcAAAAHc3NoLXJzYQAAAAMBAAEAAACBAKooUHhyxYmMyVQZ1RP0KktwX6CiEsXIaE1SA3XYjFyw0pzttXLLqbB0deluNjUR57D7WF7po8xY20EavDzW58JtfQQqLOhCvXr0BSJ5hoC58aVP21mKgKFwFTmVyOPmPUEa9dQ2/fK5Z1wuS7PMI1oD5/GVU4aqUhG6kZ7PtBN3AAAAACMAAAAdAAAACm5vdC1hLWNlcnQAAAALdGVzdDItY2VydDECAAAAmwAAAJcAAAAHc3NoLXJzYQAAAAMBAAEAAACBAKdmCpMfU7shQOFJIYhkxJD0DivtIqbrWXEsbjxAPhiuOnlVhVVEgoo2+oJm//nxfDdmbA5UlIRuD5kK0PwghiBXsA5opSQzetiwMap/rKsVoD4IWhYFgjkmuuTfz3Y/CHAK9CWeqQpimm7IU4uz+CogdcAC6HTH6Gud2hmGoCBN`)
+
+/*
+sha1: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQCnZgqTH1O7IUDhSSGIZMSQ9A4r7SKm61lxLG48QD4Yrjp5VYVVRIKKNvqCZv/58Xw3ZmwOVJSEbg+ZCtD8IIYgV7AOaKUkM3rYsDGqf6yrFaA+CFoWBYI5Jrrk3892PwhwCvQlnqkKYppuyFOLs/gqIHXAAuh0x+hrndoZhqAgTQ==
+sha1: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQC8jtOLrEPeCM8shR/mYfa+VQcxj/UTK2NEMCiUir6vEDXuw/sNIqEnVt+ZNjhB+jzC6hDtI64p1jFIncnmFGvOD9bjMYS7sEktuhoQONdaA+35obSHyrXqQEu2MjVny+uvSJMkBzEaKCLRSmCNH4TciSFt4XDG4qMHo5Woq8wKUw==
+
+That's the pubkey corresponding to key2 and another random public key.
+*/
+var krlbuf3 = MustDecode64(`U1NIS1JMCgAAAAABAAAAAAAABNIAAAAAVoLjNgAAAAAAAAAAAAAAAAAAAAADAAAAMAAAABRDOrKVs/qUeNmJ9vkfukZPqzIr2gAAABRKVV50Gh8RXfq8l4qo/HBNW8bItg==`)
+
+type streamRNG struct {
+	stream cipher.Stream
+}
+
+func (c streamRNG) Read(buf []byte) (int, error) {
+	c.stream.XORKeyStream(buf, buf)
+	return len(buf), nil
+}
+
+// Returns a deterministic RNG based on seed.
+func rng(seed string) io.Reader {
+	key := sha256.Sum256([]byte(seed))
+	aes, err := aes.NewCipher(key[:])
+	if err != nil {
+		panic(err)
+	}
+	ctr := cipher.NewCTR(aes, make([]byte, aes.BlockSize()))
+	return streamRNG{ctr}
+}
