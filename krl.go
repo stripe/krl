@@ -1,9 +1,6 @@
 // Package krl provides functionality for reading and writing SSH Key Revocation
 // Lists (KRLs).
 //
-// The plan is to upstream this functionality into golang.org/x/crypto/ssh once
-// the package becomes stable.
-//
 // References:
 // 	https://raw.githubusercontent.com/openssh/openssh-portable/master/PROTOCOL.krl
 package krl
