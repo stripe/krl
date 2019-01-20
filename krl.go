@@ -8,6 +8,7 @@ package krl
 import (
 	"bytes"
 	"crypto/sha1"
+	"crypto/sha256"
 	"io"
 	"math/big"
 	"sort"
@@ -268,6 +269,36 @@ func (k *KRLExplicitKeySection) marshal() []byte {
 	})
 }
 
+type bigEndian [][]byte
+
+func (b bigEndian) Len() int {
+	return len(b)
+}
+func (b bigEndian) Less(i, j int) bool {
+	return bytes.Compare(b[i][:], b[j][:]) == -1
+}
+func (b bigEndian) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+type hashList interface {
+	slices() [][]byte
+}
+
+func parseBigEndian(l hashList) bigEndian {
+	b := l.slices()
+
+	// For some reason SSH insists that keys revoked by fingerprint must be
+	// sorted as if they were big-endian integers (i.e., lexicographically).
+	be := make(bigEndian, len(b))
+	for i, hash := range b {
+		be[i] = make([]byte, len(hash))
+		copy(be[i], hash[:])
+	}
+	sort.Sort(be)
+	return be
+}
+
 // KRLFingerprintSection revokes keys by their SHA1 fingerprints. It is
 // semantically equivalent to--but is more space efficient than--
 // KRLExplicitKeySection.
@@ -283,16 +314,13 @@ func (k *KRLFingerprintSection) isRevoked(key ssh.PublicKey) bool {
 	return false
 }
 
-type bigEndian [][sha1.Size]byte
-
-func (b bigEndian) Len() int {
-	return len(b)
-}
-func (b bigEndian) Less(i, j int) bool {
-	return bytes.Compare(b[i][:], b[j][:]) == -1
-}
-func (b bigEndian) Swap(i, j int) {
-	b[i], b[j] = b[j], b[i]
+func (k *KRLFingerprintSection) slices() [][]byte {
+	s := make([][]byte, len(*k))
+	for i, hash := range *k {
+		s[i] = make([]byte, len(hash))
+		copy(s[i], hash[:])
+	}
+	return s
 }
 
 func (k *KRLFingerprintSection) marshal() []byte {
@@ -300,22 +328,55 @@ func (k *KRLFingerprintSection) marshal() []byte {
 		return nil
 	}
 
-	// For some reason SSH insists that keys revoked by fingerprint must be
-	// sorted as if they were big-endian integers (i.e., lexicographically).
-	be := make(bigEndian, len(*k))
-	for i, hash := range *k {
-		be[i] = hash
-	}
-	sort.Sort(be)
-
 	var buf bytes.Buffer
-	for _, hash := range be {
+	for _, hash := range parseBigEndian(k) {
 		buf.Write(ssh.Marshal(krlFingerprintSHA1{
 			PublicKeyHash: hash[:],
 		}))
 	}
 	return ssh.Marshal(krlSection{
 		SectionType: 3,
+		SectionData: buf.Bytes(),
+	})
+}
+
+// KRLFingerprintSHA256Section revokes keys by their SHA256 fingerprints. It is
+// semantically equivalent to--but is more space efficient than--
+// KRLExplicitKeySection.
+type KRLFingerprintSHA256Section [][sha256.Size]byte
+
+func (k *KRLFingerprintSHA256Section) isRevoked(key ssh.PublicKey) bool {
+	sha := sha256.Sum256(marshalPubkey(key))
+	for _, hash := range *k {
+		if hash == sha {
+			return true
+		}
+	}
+	return false
+}
+
+func (k *KRLFingerprintSHA256Section) slices() [][]byte {
+	s := make([][]byte, len(*k))
+	for i, hash := range *k {
+		s[i] = make([]byte, len(hash))
+		copy(s[i], hash[:])
+	}
+	return s
+}
+
+func (k *KRLFingerprintSHA256Section) marshal() []byte {
+	if len(*k) == 0 {
+		return nil
+	}
+
+	var buf bytes.Buffer
+	for _, hash := range parseBigEndian(k) {
+		buf.Write(ssh.Marshal(krlFingerprintSHA1{
+			PublicKeyHash: hash[:],
+		}))
+	}
+	return ssh.Marshal(krlSection{
+		SectionType: 5,
 		SectionData: buf.Bytes(),
 	})
 }

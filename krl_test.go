@@ -115,6 +115,36 @@ func TestKRL3(t *testing.T) {
 	}
 }
 
+func TestKRL4(t *testing.T) {
+	t.Parallel()
+
+	krl, err := ParseKRL(krlbuf4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if krl.IsRevoked(key1cert1) {
+		t.Errorf("key1cert1 should not be revoked")
+	}
+	if krl.IsRevoked(key1cert2) {
+		t.Errorf("key1cert2 should not be revoked")
+	}
+	if !krl.IsRevoked(key2cert1) {
+		t.Errorf("key2cert1 should be revoked")
+	}
+	if !krl.IsRevoked(key2cert2) {
+		t.Errorf("key2cert2 should be revoked")
+	}
+
+	out, err := krl.Marshal(rng("seed4"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(krlbuf4, out) {
+		t.Fatalf("expected %x, got %x", krlbuf4, out)
+	}
+}
+
 func TestSignatures(t *testing.T) {
 	t.Parallel()
 

@@ -138,6 +138,14 @@ That's the pubkey corresponding to key2 and another random public key.
 */
 var krlbuf3 = MustDecode64(`U1NIS1JMCgAAAAABAAAAAAAABNIAAAAAVoLjNgAAAAAAAAAAAAAAAAAAAAADAAAAMAAAABRDOrKVs/qUeNmJ9vkfukZPqzIr2gAAABRKVV50Gh8RXfq8l4qo/HBNW8bItg==`)
 
+/*
+sha256: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQCnZgqTH1O7IUDhSSGIZMSQ9A4r7SKm61lxLG48QD4Yrjp5VYVVRIKKNvqCZv/58Xw3ZmwOVJSEbg+ZCtD8IIYgV7AOaKUkM3rYsDGqf6yrFaA+CFoWBYI5Jrrk3892PwhwCvQlnqkKYppuyFOLs/gqIHXAAuh0x+hrndoZhqAgTQ==
+sha256: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQC8jtOLrEPeCM8shR/mYfa+VQcxj/UTK2NEMCiUir6vEDXuw/sNIqEnVt+ZNjhB+jzC6hDtI64p1jFIncnmFGvOD9bjMYS7sEktuhoQONdaA+35obSHyrXqQEu2MjVny+uvSJMkBzEaKCLRSmCNH4TciSFt4XDG4qMHo5Woq8wKUw==
+
+That's the pubkey corresponding to key2 and another random public key.
+*/
+var krlbuf4 = MustDecode64(`U1NIS1JMCgAAAAABAAAAAFxEUXwAAAAAXERRfAAAAAAAAAAAAAAAAAAAAAAFAAAASAAAACBuVB0s1tLy9i9kilL7AuObFiQBoyjyLHQmynnDwvvZWgAAACCCtByMvPn9FT1+e6V9aqmDfeUnRKFgtpSlFN18fJ7swg==`)
+
 type streamRNG struct {
 	stream cipher.Stream
 }
