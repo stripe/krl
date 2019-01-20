@@ -142,6 +142,16 @@ type krlFingerprintSHA1 struct {
 }
 
 /*
+	string	public_key_hash[0]
+	....
+*/
+type krlFingerprintSHA256 struct {
+	PublicKeyHash []byte
+
+	Rest []byte `ssh:"rest"`
+}
+
+/*
 	byte	KRL_SECTION_SIGNATURE
 	string	signature_key
 	string	signature
