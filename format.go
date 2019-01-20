@@ -41,6 +41,7 @@ type krlHeader struct {
 #define KRL_SECTION_EXPLICIT_KEY		2
 #define KRL_SECTION_FINGERPRINT_SHA1		3
 #define KRL_SECTION_SIGNATURE			4
+#define KRL_SECTION_FINGERPRINT_SHA256		5
 */
 type krlSection struct {
 	SectionType byte
