@@ -118,11 +118,14 @@ func parseCertificateSection(in []byte) (*KRLCertificateSection, error) {
 	if err := ssh.Unmarshal(in, &header); err != nil {
 		return nil, fmt.Errorf("krl: while parsing certificate section header: %v", err)
 	}
-	ca, err := ssh.ParsePublicKey(header.CAKey)
-	if err != nil {
-		return nil, fmt.Errorf("krl: while parsing CA key: %v", err)
+	k := new(KRLCertificateSection)
+	if len(header.CAKey) > 0 {
+		ca, err := ssh.ParsePublicKey(header.CAKey)
+		if err != nil {
+			return nil, fmt.Errorf("krl: while parsing CA key: %v", err)
+		}
+		k.CA = ca
 	}
-	k := &KRLCertificateSection{CA: ca}
 	in = header.Rest
 	for len(in) > 0 {
 		var section krlCertificateSection
